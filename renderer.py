@@ -1,14 +1,12 @@
 import curses
-from engine import Tile, Map
+from engine import Rect, Tile, Map
 from entities import Player
 
 
 class Renderer:
     tile_render_map = {
-        Tile.FLOOR.value: " ",  # Floor space
-        Tile.FILL.value: "#",  # Filled space (rock)
-        Tile.WALL_HOR.value: "-",  # Wall (hor)
-        Tile.WALL_VERT.value: "|",  # Wall (vert),
+        Tile.EMPTY.value: " ",  # EMPTY space
+        Tile.FILL.value: "█",  # Filled space (rock)
         Tile.ENEMY.value: "e",  # Enemy
         Tile.KEY.value: "+",  # Key
         Tile.GOLD.value: "$",  # Gold
@@ -21,7 +19,8 @@ class Renderer:
         self.stdscr = curses.initscr()
         self._map = map
         self._player = player
-        self.mapscr = curses.newwin(self._map.h, self._map.w+1, 0, 0)
+        # Below len(str) used for axes labeling spacing
+        self.mapscr = curses.newwin(self._map.h+len(str(self._map.h)), self._map.w+1+len(str(self._map.w)), 0, 0)
         self.infoscr = curses.newwin(self._infoscr_h, self._map.w, self._map.h, 0)
         curses.noecho()
         curses.cbreak()
@@ -54,7 +53,6 @@ class Renderer:
     def render(self):
         # Render map
         for i, y in enumerate(self._map.state):
-          #line = "".join(map(lambda c: self.tile_render_map[c], y))
           line = "".join(map(lambda c: self.tile_render_map[c], y))
           self.mapscr.addstr(i, 0, line)
         texts = self._get_infoscr_text()
@@ -66,8 +64,9 @@ class Renderer:
         self.infoscr.refresh()
 
 def test_renderer():
-    map = Map(15, 15)
-    map.generate_rooms(10000,(4,5),(3,3))
+    map = Map(72, 15)
+    map.generate_rooms(10000,(2,5),(2,5))
+    map._place_entity(0,1,Tile.PLAYER)
     player = Player(100, 10)
     renderer = Renderer(map, player)
     renderer.render_loop()
