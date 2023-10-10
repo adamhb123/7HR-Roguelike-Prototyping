@@ -2,6 +2,9 @@ from dataclasses import dataclass
 import random
 from typing import Tuple
 
+@dataclass
+class PickupEntity:
+    value: int
 
 @dataclass
 class CharacterEntity:

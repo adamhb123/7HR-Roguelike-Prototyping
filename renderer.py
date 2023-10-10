@@ -1,5 +1,6 @@
 import curses
-from engine import Rect, Tile, Map
+from controller import Controller
+from engine import Rect, Tile, Map, Event
 from entities import Player
 
 
@@ -14,11 +15,12 @@ class Renderer:
     }
     _infoscr_h = 6
 
-    def __init__(self, map: Map, player: Player):
+    def __init__(self, controller: Controller, map: Map, player: Player):
         # Note: curses coordinate system is (y,x)
         self.stdscr = curses.initscr()
         self._map = map
         self._player = player
+        self._controller = controller
         # Below len(str) used for axes labeling spacing
         self.mapscr = curses.newwin(self._map.h+len(str(self._map.h)), self._map.w+1+len(str(self._map.w)), 0, 0)
         self.infoscr = curses.newwin(self._infoscr_h, self._map.w, self._map.h, 0)
@@ -31,7 +33,13 @@ class Renderer:
             self.clear()
             self.render()
             key = self.mapscr.getkey()
-
+            print(key)
+            print(type(key))
+            event, to_tile, from_position, to_position = self._controller.handle_input(key)
+            if event != Event.NULL:
+                self._map.move_entity(from_position, to_position)
+                self._map.handle_event(event, to_tile, to_position)
+                self._map.entities_step()
     def clear(self):
         self.mapscr.clear()
         self.infoscr.clear()
@@ -66,9 +74,11 @@ class Renderer:
 def test_renderer():
     map = Map(72, 15)
     map.generate_rooms(10000,(2,5),(2,5))
-    map._place_entity(0,1,Tile.PLAYER)
+    map._place_entity_randomly(Tile.PLAYER)
     player = Player(100, 10)
-    renderer = Renderer(map, player)
+    controller = Controller(map, player)
+    renderer = Renderer(controller, map, player)
     renderer.render_loop()
+    
 
 test_renderer()
