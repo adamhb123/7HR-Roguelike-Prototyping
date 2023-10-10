@@ -51,9 +51,10 @@ class TileType(Enum):
 @dataclass
 class Tile:
     type: TileType
-    entity: Optional[Entity]
+    entity: Optional[Entity]=None
 
 EmptyTileSingleton = Tile(TileType.EMPTY)
+FillTileSingleton = Tile(TileType.FILL)
 
 class Map:
     def __init__(self, size: Size):
@@ -62,7 +63,7 @@ class Map:
         self.reset_state()
 
     def reset_state(self):
-        self.state = [[EmptyTileSingleton for x in range(0, self.size.w)] for y in range(0, self.size.h)]
+        self.state = [[FillTileSingleton for x in range(0, self.size.w)] for y in range(0, self.size.h)]
 
     def entities_step(self):
         entities = self._find_tiles(TileType.ENEMY)
@@ -104,7 +105,7 @@ class Map:
         self._update_rooms()
         return True
     
-    def _find_tiles(self, tile_type: TileType) -> List[Tuple[int, int]]:
+    def _find_tiles(self, tile_type: TileType) -> List[Position]:
         locations: List[Position] = []
         for y in range(0,len(self.state)):
             for x in range(0,len(self.state[0])):
@@ -114,18 +115,18 @@ class Map:
 
     
     def _place_entity(self, position: Position, entity_tile: Tile):
-        if self.get_tile_at(position.x, position.y) == EmptyTileSingleton:
+        if self.get_tile_at(position) == EmptyTileSingleton:
             self.state[position.y][position.x] = entity_tile
             return True
         return False
 
-    def _place_entity_randomly(self, entity_tile: Tile | int, max_attempts: int = 10000):
+    def _place_entity_randomly(self, entity_tile: Tile, max_attempts: int = 10000):
         for _ in range(max_attempts):
-            if self._place_entity(random.randint(0,self.size.w), random.randint(0, self.size.h), entity_tile):
+            if self._place_entity(Position(random.randint(0,self.size.w), random.randint(0, self.size.h)), entity_tile):
                 return True
         return False
 
-    def _place_room_randomly(self, size: int, outer_padding: int = 1):
+    def _place_room_randomly(self, size: Size, outer_padding: int = 1):
         x = random.randint(outer_padding, self.size.w - size.w - outer_padding)
         y = random.randint(outer_padding, self.size.h - size.h - outer_padding)
         self._place_room(Position(x,y), size)
@@ -139,8 +140,8 @@ class Map:
 
     def generate_rooms(self, n_attempts: int, width_range: Tuple[int, int], height_range: Tuple[int, int]):
         for _ in range(0, n_attempts):
-            self._place_room_randomly(random.randint(width_range[0], width_range[1]),
-                            random.randint(height_range[0], height_range[1]))
+            self._place_room_randomly(Size(random.randint(width_range[0], width_range[1]),
+                            random.randint(height_range[0], height_range[1])))
 
     def generate_corridors(self):
         pass
