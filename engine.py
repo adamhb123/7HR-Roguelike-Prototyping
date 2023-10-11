@@ -16,6 +16,10 @@ class Size:
 
 @dataclass
 class Rect:
+    """Rect object for representing rectangles by Position and Size.
+
+    Used to represent rooms in the game.
+    """
     position: Position
     size: Size
     def __repr__(self):
@@ -31,12 +35,20 @@ class Rect:
         )
     
 class Event(Enum):
+    """Event Enum
+    
+    Describes an event in-game.
+    """
     NULL=-1
     STEP=0
     BATTLE=1
     PICKUP=2
 
 class TileType(Enum):
+    """TileType Enum
+
+    Describes a Tile object's "type" i.e. what it represents in-game.
+    """
     EMPTY=0
     FILL=1
     WALL=2
@@ -50,6 +62,14 @@ class TileType(Enum):
 
 @dataclass
 class Tile:
+    """Tile object
+
+    Used for representing tiles
+    
+    Instance Attributes:
+        type (TileType) - Type of Tile
+        entity (Optional[Entity]) - Optional Entity attribute, used as a container of any information relevant to the Tile. Defaults to None.
+    """
     type: TileType
     entity: Optional[Entity]=None
 
