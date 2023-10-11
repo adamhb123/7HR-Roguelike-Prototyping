@@ -35,10 +35,10 @@ class Renderer:
             key = self.mapscr.getkey()
             print(key)
             print(type(key))
-            event, to_tile, from_position, to_position = self._controller.handle_input(key)
-            if event != Event.NULL:
-                self._map.move_entity(from_position, to_position)
-                self._map.handle_event(event, to_tile, to_position)
+            input_response = self._controller.handle_input(key)
+            if input_response.event != Event.NULL:
+                self._map.move_entity(input_response.from_pos, input_response.to_pos)
+                self._map.handle_event(input_response.event, input_response.to_tile, input_response.to_pos)
                 self._map.entities_step()
     def clear(self):
         self.mapscr.clear()
