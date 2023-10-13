@@ -1,6 +1,6 @@
 import curses
 from controller import Controller
-from engine import Rect, Tile, Map, Event, TileType, Size
+from engine import Rect, Tile, Map, Event, TileType, Size, initialize_game
 from entities import PlayerEntity
 
 
@@ -28,18 +28,21 @@ class Renderer:
         curses.cbreak()
         self.mapscr.keypad(True)
 
+    def render_step(self):
+        self.clear()
+        self.render()
+        key = self.mapscr.getkey()
+        print(key)
+        print(type(key))
+        input_response = self._controller.handle_input(key)
+        if input_response.event != Event.NULL:
+            self._map.move_entity(input_response.from_pos, input_response.to_pos)
+            self._map.handle_event(input_response.event, input_response.to_tile, input_response.to_pos)
+            self._map.entities_step()
+
     def render_loop(self):
         while True:
-            self.clear()
-            self.render()
-            key = self.mapscr.getkey()
-            print(key)
-            print(type(key))
-            input_response = self._controller.handle_input(key)
-            if input_response.event != Event.NULL:
-                self._map.move_entity(input_response.from_pos, input_response.to_pos)
-                self._map.handle_event(input_response.event, input_response.to_tile, input_response.to_pos)
-                self._map.entities_step()
+            self.render_step()
     def clear(self):
         self.mapscr.clear()
         self.infoscr.clear()
@@ -74,13 +77,16 @@ class Renderer:
         self.infoscr.refresh()
 
 def test_renderer():
-    map = Map(Size(72, 15))
-    map.generate_rooms(10000,(2,5),(2,5))
-    map._place_entity_randomly(Tile(TileType.PLAYER, PlayerEntity(100,10)))
-    player = PlayerEntity(100, 10)
+    map = Map(Size(72,15))
+    map.generate_rooms()
+    player = PlayerEntity(100,10)
+    map._place_entity_randomly(Tile(TileType.PLAYER, player))
     controller = Controller(map, player)
     renderer = Renderer(controller, map, player)
-    renderer.render_loop()
+    renderer.render_step()
+    map.generate_corridors(_debug_render_step_func=renderer.render_step)
+    renderer.render_step()
+
     
 
 test_renderer()
