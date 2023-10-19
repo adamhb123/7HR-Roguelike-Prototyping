@@ -49,8 +49,10 @@ class Controller:
             event = Event.STEP
         elif tile.type == TileType.ENEMY:
             event = Event.BATTLE
-        elif tile.type == TileType.GOLD or tile.type == TileType.KEY:
-            event = Event.PICKUP
+        elif tile.type == TileType.GOLD:
+            event = Event.GOLD
+        elif tile.type == TileType.KEY:
+            event = Event.KEY
         else: # Wall hit
             event = Event.NULL
             to = start_pos # If we hit a wall, move nowhere

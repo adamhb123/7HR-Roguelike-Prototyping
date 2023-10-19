@@ -2,8 +2,8 @@ import math
 import random
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Tuple, Union
-from entities import Entity, PlayerEntity
+from typing import Any, List, Optional, Tuple, Union
+from entities import EnemyEntity, Entity, PlayerEntity
 from utility import distance, shortest_path
 
 @dataclass
@@ -48,7 +48,8 @@ class Event(Enum):
     NULL=-1
     STEP=0
     BATTLE=1
-    PICKUP=2
+    KEY=2
+    GOLD=3
 
 class TileType(Enum):
     """TileType Enum
@@ -57,7 +58,6 @@ class TileType(Enum):
     """
     EMPTY=0
     FILL=1
-    WALL=2
     ENEMY=3
     KEY=4
     GOLD=5
@@ -90,38 +90,54 @@ class Map:
         
 
     def _reset_state(self):
+        self.rooms.clear()
         self.state = [[FillTileSingleton for x in range(0, self.size.w)] for y in range(0, self.size.h)]
 
-    def reset(self):
+    def reset(self, player: Optional[Tile]):
         self._reset_state()
         self.generate_rooms(12, (2,5), (2,5))
         self.generate_corridors()
+        self._place_entity_randomly(player if player else Tile(TileType.PLAYER, PlayerEntity(100,10)))
+        self._place_entity_randomly(Tile(TileType.KEY))
+        [self._place_entity_randomly(Tile(TileType.GOLD)) for _ in range(0,random.randint(2,5))]
+        [self._place_entity_randomly(Tile(TileType.ENEMY, EnemyEntity(random.randint(5,25),
+                                                                       random.randint(1,10),
+                                                                       (5,10)))) for _ in range(0,random.randint(2,5))]
+        
 
     def entities_step(self):
-        entities = self._find_tiles(TileType.ENEMY)
+        player_pos = self._find_tiles(TileType.PLAYER)[0]
+        enemies_pos = self._find_tiles(TileType.ENEMY)
         # Calculate shortest path for enemies, move them along path
+        for enemy_pos in enemies_pos:
+            next_step = shortest_path(enemy_pos.to_tuple(), player_pos.to_tuple())[0]
+            print(next_step)
+            self.move_entity(enemy_pos, Position(next_step[0], next_step[1]))
 
-
-    def handle_event(self, event: Event, tile: TileType, tile_pos: Position):
+    def handle_event(self, event: Event, to_tile: Tile):
+        player: Tile = self.get_tile_at(self._find_tiles(TileType.PLAYER)[0])
         if event == Event.BATTLE:
-            pass
-        elif event == Event.PICKUP:
-            pass
+            player_hit_chance = .5
+            enemy = to_tile
+            while player.entity.health > 0 and enemy.entity.health > 0:
+                if random.random() < player_hit_chance:
+                    player.entity.health -= enemy.entity.strength
+                    player_hit_chance = .5
+                else:
+                    enemy.entity.health -= player.entity.strength
+                    player_hit_chance += .1
+            
+        elif event == Event.KEY:
+            player.entity.keys += 1
+            self.reset(player)
+        elif event == Event.GOLD:
+            player.entity.gold += 1
     def time_step(self, player_pos: Position, to_tile: TileType | int, to: Position):
         self._map.move_entity(player_pos.x, player_pos.y, to.x, to.y)
         self.entities_step()
 
     def _update_rooms(self):
         for room in self.rooms:
-            """# Place horizontal walls
-            print(self.state)
-            for x in range(room.x, room.x + room.w):
-                self.state[room.y][x] = Tile.WALL.value
-                self.state[room.y+room.h][x] = Tile.WALL.value
-            # Place vertical walls
-            for y in range(room.y, room.y+room.h):
-                self.state[y][room.x] = Tile.WALL.value
-                self.state[y][room.x+room.w] = Tile.WALL.value"""
             # Carve room
             for y in range(room.position.y, room.position.y+room.size.h):
                 for x in range(room.position.x, room.position.x+room.size.w):
@@ -133,7 +149,6 @@ class Map:
             #print(f"Can't place room: {new_room}")
             return False
         self.rooms.append(new_room)
-        print(new_room)
         self._update_rooms()
         return True
     
@@ -154,7 +169,7 @@ class Map:
 
     def _place_entity_randomly(self, entity_tile: Tile, max_attempts: int = 10000):
         for _ in range(max_attempts):
-            if self._place_entity(Position(random.randint(0,self.size.w), random.randint(0, self.size.h)), entity_tile):
+            if self._place_entity(Position(random.randint(0,self.size.w-1), random.randint(0, self.size.h-1)), entity_tile):
                 return True
         return False
 
@@ -186,29 +201,7 @@ class Map:
     def _state_as_position_tuples(self) -> List[Tuple[int, int]]:
         return [(x,y) for y in range(len(self.state)) for x in range(len(self.state[0]))]
     
-    def path_exists(self, a: Position, b: Position):
-        """Implement Dijkstra's algorithm to check if clear path from a to b exists in map
-
-        Args:
-            a (Tuple[int,int]): _description_
-            b (Tuple[int, int]): _description_
-        """
-        def _get_neighbors(node: Tuple[int, int], node_set: List[Tuple]):
-            return list(filter(lambda node: node in node_set, (
-                    (node[0] + 1, node[1]), (node[0] - 1, node[1]),  # X
-                    (node[0], node[1] + 1), (node[0], node[1] - 1), # Y
-                    (node[0] - 1, node[1] - 1), (node[0] - 1, node[1] + 1), # Left corners
-                    (node[0] + 1, node[1] - 1), (node[0] + 1, node[1] + 1)  # Right corners
-            )))
-
-
-        initial_node, goal_node = a.to_tuple(), b.to_tuple()
-        unvisited_set = self._state_as_position_tuples()
-        unvisited_set = map(lambda node: (node, math.inf if node is not initial_node else 0), unvisited_set) # Add distances
-        current_node = initial_node
-        # https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
-        unvisited_neighbors = _get_neighbors(current_node, unvisited_set)
-
+        
     def generate_corridors(self, _debug_render_step_func=None):
         """Uses Euclidean distance to calculate the shortest path between each room, and carves paths from 
         each room to all others.
@@ -224,5 +217,3 @@ def initialize_game(size: Size=Size(72, 15), player: Optional[PlayerEntity] = No
     player = player if player else PlayerEntity(100,10)
     map._place_entity_randomly(Tile(TileType.PLAYER, player))
     return map, player
-
-print(Map(Size(5,5))._state_as_positions())
